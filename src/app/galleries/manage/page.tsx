@@ -18,18 +18,17 @@ export default function NewGallery() {
 
             <GalleryForm
                 onSubmit={async (data: any) => {
-                    await createGallery(data).then((res) => setGalleryId(res?.data?.id));
-                    // router.push('/galleries');
+                    await createGallery(data).then((res) => router.push(`/galleries/manage/${res?.data?.id}`));
                 }}
             />
 
-            <div className="mt-8 max-w-7xl mx-auto">
+            {/* <div className="mt-8 max-w-7xl mx-auto">
                 {galleryId !== 0 && <GalleryImageManager
 
                     galleryId={Number(galleryId)}
 
                 />}
-            </div>
+            </div> */}
         </>
     );
 }

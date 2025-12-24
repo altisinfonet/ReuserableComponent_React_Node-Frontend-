@@ -6,6 +6,7 @@ import { Trash2, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axiosInstance from '@/utils/lib/api';
+import { _SUCCESS } from '@/utils/AlertToasater/alertToaster';
 
 const card = {
     hidden: { opacity: 0, y: 20 },
@@ -17,6 +18,7 @@ export default function GalleryCard({
     gallery,
     fetchGalleries,
     setGalleries,
+    view
 }: any) {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -24,11 +26,19 @@ export default function GalleryCard({
     const hasImages = gallery?.galleryImages?.length > 0;
 
     const deleteGallery = async (id: number) => {
-        return axiosInstance.delete(`/api/v1/galleries/${id}`);
+        try {
+            const response = await axiosInstance.delete(`/api/v1/galleries/${id}`);
+            if (response?.data?.success) {
+                _SUCCESS('Gallery deleted');
+                return response;
+            }
+        } catch (error: any) {
+
+        }
     };
 
     const handleDelete = async () => {
-        if (hasImages) return; // 🔒 HARD STOP (safety)
+        // if (hasImages) return; // 🔒 HARD STOP (safety)
 
         try {
             setLoading(true);
@@ -90,17 +100,10 @@ export default function GalleryCard({
                             </span>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className={`flex w-full gap-3 ${view !== 'grid' && "justify-end"}`}>
                             <Link
-                                href={`/galleries/${gallery.id}/edit`}
-                                className="
-                                  flex-1 text-center
-                                  text-sm font-medium
-                                  px-4 py-2 rounded-xl
-                                  bg-gray-900 text-white
-                                  hover:bg-gray-800
-                                  transition
-                                "
+                                href={`/galleries/manage/${gallery.id}`}
+                                className={` text-center text-sm font-medium px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition  ${view !== 'grid' ? "" : "flex-1"}`}
                             >
                                 Edit
                             </Link>
@@ -173,14 +176,18 @@ function DeleteConfirmModal({
                                     <AlertTriangle className="text-orange-500" size={20} />
                                 )}
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                    {hasImages
+                                    {`Delete gallery?`}
+                                    {/* {hasImages
                                         ? 'Cannot delete gallery'
-                                        : 'Delete gallery?'}
+                                        : 'Delete gallery?'} */}
                                 </h3>
                             </div>
 
                             <p className="text-sm text-gray-600 mt-3">
-                                {hasImages ? (
+
+                                {`This action cannot be undone. The gallery will be permanently removed along with all of its images.`}
+
+                                {/* {hasImages ? (
                                     <>
                                         This gallery contains{' '}
                                         <strong>{imageCount}</strong> image
@@ -191,7 +198,7 @@ function DeleteConfirmModal({
                                     </>
                                 ) : (
                                     'This action cannot be undone. The gallery will be permanently removed.'
-                                )}
+                                )} */}
                             </p>
 
                             <div className="mt-6 flex gap-3 justify-end">
@@ -206,22 +213,23 @@ function DeleteConfirmModal({
                                 >
                                     Close
                                 </button>
-
-                                {!hasImages && (
-                                    <button
-                                        onClick={onConfirm}
-                                        disabled={loading}
-                                        className="
+                                <button
+                                    onClick={onConfirm}
+                                    disabled={loading}
+                                    className="
                                           px-4 py-2 rounded-lg
                                           text-sm font-medium
                                           bg-red-600 text-white
                                           hover:bg-red-700
                                           disabled:opacity-60 cursor-pointer
                                         "
-                                    >
-                                        {loading ? 'Deleting…' : 'Delete'}
-                                    </button>
-                                )}
+                                >
+                                    {loading ? 'Deleting…' : 'Delete'}
+                                </button>
+
+                                {/* {!hasImages && (
+                                    
+                                )} */}
                             </div>
                         </div>
                     </motion.div>

@@ -22,14 +22,16 @@ import {
     updateGalleryImage,
     uploadGalleryImages,
 } from '@/utils/lib/galleryImageApi';
+
 import axiosInstance from '@/utils/lib/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trash2 } from 'lucide-react';
+import { LayoutGrid, List, Trash2 } from 'lucide-react';
+import { _SUCCESS } from '@/utils/AlertToasater/alertToaster';
 
 /* ------------------------------------
-   SORTABLE ITEM
+   SORTABLE WRAPPER
 ------------------------------------ */
-function SortableImage({ image, onDelete, onUpdateTitle, setDeleteTarget }: any) {
+function SortableImage({ image, children }: any) {
     const {
         attributes,
         listeners,
@@ -46,38 +48,28 @@ function SortableImage({ image, onDelete, onUpdateTitle, setDeleteTarget }: any)
 
     return (
         <div ref={setNodeRef} style={style}>
-            <ImageCard
-                image={image}
-                onDelete={onDelete}
-                onRequestDelete={(image: any) => setDeleteTarget(image)}
-                onUpdateTitle={onUpdateTitle}
-                dragHandleProps={{
+            {children({
+                dragHandleProps: {
                     ref: setActivatorNodeRef,
                     ...listeners,
                     ...attributes,
-                }}
-            />
+                },
+            })}
         </div>
     );
 }
 
-
 export default function GalleryImageManager({ galleryId }: { galleryId: number }) {
     const [images, setImages] = useState<any[]>([]);
+    const [selected, setSelected] = useState<number[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isSaving, setIsSaving] = useState(false);
-
-    const [deleteTarget, setDeleteTarget] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-
-    // prevents concurrent save calls
     const saveLock = useRef(false);
+    const [isGridView, setIsGridView] = useState(true);
 
     const loadImages = async () => {
         const res = await fetchGalleryImages(galleryId);
-        setImages(
-            res.data.sort((a: any, b: any) => a.imageRank - b.imageRank)
-        );
+        setImages(res.data.sort((a: any, b: any) => a.imageRank - b.imageRank));
         setLoading(false);
     };
 
@@ -85,24 +77,12 @@ export default function GalleryImageManager({ galleryId }: { galleryId: number }
         loadImages();
     }, [galleryId]);
 
-    const reorderGalleryImages = async (
-        galleryId: number,
-        orders: { id: number; imageRank: number }[],
-    ) => {
-        return axiosInstance.patch(
-            `/api/v1/gallery-image/${galleryId}/reorder`,
-            { orders }
-        );
-    };
-
     /* ------------------------------------
-       DRAG END → REORDER + SAVE
+       DRAG END → REORDER
     ------------------------------------ */
     const onDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
-
-        if (!over || active.id === over.id) return;
-        if (saveLock.current) return;
+        if (!over || active.id === over.id || saveLock.current) return;
 
         let reordered: any[] = [];
 
@@ -113,85 +93,140 @@ export default function GalleryImageManager({ galleryId }: { galleryId: number }
             return reordered;
         });
 
-        // 🔐 lock saving
         saveLock.current = true;
-        setIsSaving(true);
-
         try {
-            // 🔥 SINGLE DRAG → SINGLE BATCH UPDATE
-            await reorderGalleryImages(
-                galleryId,
-                reordered.map((img, index) => ({
+            await axiosInstance.patch(`/api/v1/gallery-image/${galleryId}/reorder`, {
+                orders: reordered.map((img, index) => ({
                     id: img.id,
                     imageRank: index + 1,
-                }))
-            );
-            loadImages()
+                })),
+            });
+            loadImages();
         } finally {
             saveLock.current = false;
-            setIsSaving(false);
+        }
+    };
+
+    /* ------------------------------------
+       BULK DELETE
+    ------------------------------------ */
+    const confirmBulkDelete = async () => {
+
+        console.log(selected, "imageIDS")
+
+        try {
+            const response = await axiosInstance.delete(`/api/v1/gallery-image/bulk/${galleryId}`, {
+                data: { ids: selected },
+            });
+            if (response?.data?.success) {
+                _SUCCESS('Images deleted');
+                loadImages();
+                setSelected([]);
+                setIsDeleting(false);
+            }
+            console.log(response, "response")
+        } catch (error: any) {
+
         }
     };
 
     return (
         <>
             <div className="mt-10 space-y-6">
-                <h2 className="text-xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-                    Gallery Images
-                </h2>
+                {/* Header */}
+                <div className="flex items-center justify-between w-full">
+                    <h2 className="text-xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
+                        Gallery Images
+                    </h2>
 
-                {/* Upload */}
+                    <div className="flex items-center justify-between gap-2">
+                        {/* View Toggle */}
+                        <div className="relative flex items-center bg-gray-100 rounded-xl p-1">
+                            {/* Animated background */}
+                            <motion.div
+                                layout
+                                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                                className="absolute top-1 bottom-1 w-10 rounded-lg bg-white shadow"
+                                style={{
+                                    left: isGridView ? '4px' : '44px',
+                                }}
+                            />
+
+                            {/* Grid Button */}
+                            <button
+                                onClick={() => setIsGridView(true)}
+                                className={`relative z-10 w-10 h-9 cursor-pointer flex items-center justify-center rounded-lg transition ${isGridView ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                aria-label="Grid view"
+                            >
+                                <LayoutGrid size={18} />
+                            </button>
+
+                            {/* List Button */}
+                            <button
+                                onClick={() => setIsGridView(false)}
+                                className={`relative z-10 w-10 h-9 flex items-center justify-center rounded-lg transition cursor-pointer  ${!isGridView ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600'}`}
+                                aria-label="List view"
+                            >
+                                <List size={18} />
+                            </button>
+                        </div>
+                        {selected.length > 0 && (
+                            <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                onClick={() => setIsDeleting(true)}
+                                className="flex items-center gap-2 px-4 py-3 text-sm rounded-xl bg-red-600 text-white cursor-pointer"
+                            >
+                                <Trash2 size={16} />
+                                Delete {selected.length}
+                            </motion.button>
+                        )}
+                    </div>
+
+                </div>
+
                 <UploadDropzone
                     onFiles={async (files) => {
-                        if (files?.length > 0) {
+                        if (files.length > 0) {
                             await uploadGalleryImages(galleryId, files);
                             loadImages();
                         }
                     }}
                 />
 
-                {isSaving && (
-                    <p className="text-xs text-purple-500 animate-pulse">
-                        Saving order…
-                    </p>
-                )}
-
                 {loading ? (
                     <p className="text-gray-400">Loading images…</p>
                 ) : (
-                    <DndContext
-                        collisionDetection={closestCenter}
-                        onDragEnd={onDragEnd}
-                    >
+                    <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                         <SortableContext
                             items={images.map((i) => i.id)}
                             strategy={rectSortingStrategy}
                         >
-                            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+                            <div className={`grid gap-4 ${isGridView ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1'}`}>
                                 {images.map((img) => (
-                                    <SortableImage
-                                        key={img.id}
-                                        image={img}
-                                        setDeleteTarget={setDeleteTarget}
-                                        onDelete={async (id: number) => {
-                                            await deleteGalleryImage(id);
-                                            loadImages();
-                                        }}
-                                        onUpdateTitle={async (id: number, title: string) => {
-                                            // optimistic update
-                                            setImages((prev) =>
-                                                prev.map((img) =>
-                                                    img.id === id ? { ...img, imageTitle: title } : img
-                                                )
-                                            );
-
-                                            await updateGalleryImage(galleryId, {
-                                                id,
-                                                imageTitle: title,
-                                            });
-                                        }}
-                                    />
-
+                                    <SortableImage key={img.id} image={img}>
+                                        {({ dragHandleProps }: any) => (
+                                            <ImageCard
+                                                image={img}
+                                                selected={selected.includes(img.id)}
+                                                onToggleSelect={(id: number) =>
+                                                    setSelected((prev) =>
+                                                        prev.includes(id)
+                                                            ? prev.filter((x) => x !== id)
+                                                            : [...prev, id]
+                                                    )
+                                                }
+                                                dragHandleProps={dragHandleProps}
+                                                onUpdateTitle={async (id: number, title: string) => {
+                                                    setImages((prev) =>
+                                                        prev.map((i) =>
+                                                            i.id === id ? { ...i, imageTitle: title } : i
+                                                        )
+                                                    );
+                                                    await updateGalleryImage(galleryId, { id, imageTitle: title });
+                                                }}
+                                            />
+                                        )}
+                                    </SortableImage>
                                 ))}
                             </div>
                         </SortableContext>
@@ -199,90 +234,52 @@ export default function GalleryImageManager({ galleryId }: { galleryId: number }
                 )}
             </div>
 
-            <DeleteImageConfirmModal
-                open={!!deleteTarget}
-                image={deleteTarget}
-                loading={isDeleting}
-                onCancel={() => setDeleteTarget(null)}
-                onConfirm={async () => {
-                    if (!deleteTarget) return;
-
-                    setIsDeleting(true);
-                    try {
-                        await deleteGalleryImage(deleteTarget.id);
-                        loadImages();
-                        setImages((prev) =>
-                            prev.filter((img) => img.id !== deleteTarget.id)
-                        );
-                        setDeleteTarget(null);
-                    } finally {
-                        setIsDeleting(false);
-                    }
-                }}
-            />
-        </>
-
-    );
-}
-
-
-
-
-
-
-function DeleteImageConfirmModal({
-    open,
-    image,
-    loading,
-    onCancel,
-    onConfirm,
-}: any) {
-    return (
-        <AnimatePresence>
-            {open && (
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center"
-                >
+            {/* Bulk Delete Modal */}
+            <AnimatePresence>
+                {isDeleting && selected.length > 0 && (
                     <motion.div
-                        initial={{ scale: 0.9, y: 10 }}
-                        animate={{ scale: 1, y: 0 }}
-                        exit={{ scale: 0.9, y: 10 }}
-                        transition={{ type: 'spring', damping: 18 }}
-                        className="bg-white rounded-xl p-5 w-[90%] max-w-sm text-center shadow-xl"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center"
                     >
-                        <Trash2 className="mx-auto text-red-500 mb-2" size={22} />
+                        <motion.div
+                            initial={{ scale: 0.9, y: 10 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 10 }}
+                            className="bg-white rounded-xl p-6 w-[90%] max-w-xs text-center shadow-xl"
+                        >
+                            <Trash2 className="mx-auto text-red-500 mb-3" size={24} />
 
-                        <p className="text-sm font-semibold text-gray-800">
-                            Delete this image?
-                        </p>
+                            <p className="text-sm font-semibold text-gray-800">
+                                Delete selected images?
+                            </p>
 
-                        <p className="text-xs text-gray-500 mt-1 truncate">
-                            {image?.imageTitle || 'Untitled image'}
-                        </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                This will permanently remove {selected.length} image
+                                {selected.length > 1 ? 's' : ''}. This action cannot be undone.
+                            </p>
 
-                        <div className="flex gap-2 mt-4">
-                            <button
-                                onClick={onCancel}
-                                disabled={loading}
-                                className="flex-1 py-2 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer"
-                            >
-                                Cancel
-                            </button>
+                            <div className="flex gap-2 mt-5">
+                                <button
+                                    onClick={() => setIsDeleting(false)}
+                                    className="flex-1 py-2 text-xs rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                                >
+                                    Keep them
+                                </button>
 
-                            <button
-                                onClick={onConfirm}
-                                disabled={loading}
-                                className="flex-1 py-2 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 cursor-pointer"
-                            >
-                                {loading ? 'Deleting…' : 'Delete'}
-                            </button>
-                        </div>
+                                <button
+                                    onClick={confirmBulkDelete}
+                                    // disabled={isDeleting}
+                                    className="flex-1 py-2 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+                                >
+                                    {`Delete forever (${selected.length})`}
+                                </button>
+                            </div>
+                        </motion.div>
                     </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                )}
+            </AnimatePresence>
+        </>
     );
 }

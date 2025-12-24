@@ -134,7 +134,6 @@ export default function UploadDropzone({
     --------------------------- */
     const handleUpload = async () => {
         if (!items.length) return;
-
         setUploading(true);
         try {
             await onFiles(items.map((i) => i.file));
@@ -227,7 +226,7 @@ export default function UploadDropzone({
                       w-full py-3 rounded-xl
                       bg-black text-white font-medium
                       hover:bg-gray-800
-                      disabled:opacity-60
+                      disabled:opacity-60 cursor-pointer
                     "
                 >
                     {uploading ? 'Uploading…' : `Upload ${items.length} Images`}

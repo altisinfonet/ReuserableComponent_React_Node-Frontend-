@@ -5,11 +5,13 @@ import { motion } from 'framer-motion';
 import GalleryGrid from '../UiComponents/GalleryGrid';
 import axiosInstance from '@/utils/lib/api';
 import Link from 'next/link';
-import GalleryImageManager from '../UiComponents/gallery-images/GalleryImageManager';
+
+type ViewMode = 'grid' | 'list';
 
 export default function GalleriesPage() {
     const [galleries, setGalleries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [view, setView] = useState<ViewMode>('grid');
 
     async function fetchGalleries() {
         const res = await axiosInstance.get(`/api/v1/galleries`);
@@ -40,15 +42,47 @@ export default function GalleriesPage() {
                     </p>
                 </div>
 
-                <Link
-                    href="/galleries/new"
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl
-                     bg-gradient-to-r from-pink-500 to-purple-500
-                     text-white font-medium shadow-lg
-                     hover:scale-[1.04] hover:shadow-xl transition"
-                >
-                    + New Gallery
-                </Link>
+                <div className="flex items-center gap-3">
+                    {/* View Toggle */}
+                    <div className="relative flex rounded-2xl bg-gray-100 p-1 shadow-inner">
+                        {/* Animated indicator */}
+                        <motion.div
+                            layout
+                            layoutId="view-toggle-indicator"
+                            transition={{
+                                type: 'spring',
+                                stiffness: 500,
+                                damping: 35,
+                            }}
+                            className={` absolute top-1 bottom-1 w-1/2 rounded-xl bg-white shadow ${view === 'grid' ? 'left-1' : 'left-1/2'} `}
+                        />
+
+                        {/* Grid Button */}
+                        <button
+
+                            onClick={() => setView('grid')}
+                            className={` cursor-pointer  relative z-10 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${view === 'grid' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'} `}
+                        >
+                            Grid
+                        </button>
+
+                        {/* List Button */}
+                        <button
+                            onClick={() => setView('list')}
+                            className={` cursor-pointer relative z-10 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${view === 'list' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            List
+                        </button>
+                    </div>
+
+
+                    <Link
+                        href="/galleries/manage"
+                        className=" inline-flex items-center justify-center px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-500 text-white font-medium shadow-lg hover:scale-[1.04] hover:shadow-xl transition"
+                    >
+                        + New Gallery
+                    </Link>
+                </div>
             </div>
 
             {/* Content */}
@@ -66,10 +100,13 @@ export default function GalleriesPage() {
                     </p>
                 </div>
             ) : (
-                <GalleryGrid galleries={galleries} fetchGalleries={fetchGalleries} setGalleries={setGalleries} />
+                <GalleryGrid
+                    galleries={galleries}
+                    view={view}
+                    fetchGalleries={fetchGalleries}
+                    setGalleries={setGalleries}
+                />
             )}
-
-
         </motion.div>
     );
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import axiosInstance from '@/utils/lib/api';
 import GalleryImageManager from '@/app/UiComponents/gallery-images/GalleryImageManager';
+import { _SUCCESS } from '@/utils/AlertToasater/alertToaster';
 
 export default function EditGalleryPage() {
     const { id } = useParams();
@@ -19,13 +20,25 @@ export default function EditGalleryPage() {
 
 
     async function getGalleryById(id: number) {
-        const res = await axiosInstance.get(`/api/v1/galleries/${id}`);
-        console.log(res?.data, "ressssssssssssssss")
-        return res?.data;
+        try {
+            const res = await axiosInstance.get(`/api/v1/galleries/${id}`);
+            return res?.data;
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                setLoading(true);
+                router.push('/galleries/manage');
+            }
+        }
     }
 
     async function updateGallery(id: number, payload: any) {
-        return axiosInstance.patch(`/api/v1/galleries/${id}`, payload);
+        try {
+            const response = axiosInstance.patch(`/api/v1/galleries/${id}`, payload);
+            _SUCCESS('Gallery updated');
+            return response;
+        } catch (error: any) {
+
+        }
     }
 
 
@@ -58,7 +71,7 @@ export default function EditGalleryPage() {
             {/* Header */}
             <div className="mb-6 max-w-2xl mx-auto">
                 <h1 className="text-3xl  font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-                    Edit Gallery
+                    Manage Gallery
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
                     Update gallery details and order
@@ -70,7 +83,7 @@ export default function EditGalleryPage() {
                 onSubmit={async (e) => {
                     e.preventDefault();
                     await updateGallery(Number(id), form);
-                    router.push('/galleries');
+                    // router.push('/galleries');
                 }}
                 className="bg-white rounded-2xl shadow-lg p-6 space-y-5 max-w-2xl mx-auto"
             >
@@ -140,7 +153,7 @@ export default function EditGalleryPage() {
 
                     <button
                         type="button"
-                        onClick={() => router.back()}
+                        onClick={() => router.push('/galleries')}
                         className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition  cursor-pointer"
                     >
                         Cancel

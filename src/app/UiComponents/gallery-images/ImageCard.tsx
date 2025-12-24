@@ -1,11 +1,13 @@
 'use client';
 
-import { GripVertical, Pencil, Check, X, Trash2 } from 'lucide-react';
+import { GripVertical, CheckSquare, Square } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 export default function ImageCard({
     image,
-    onRequestDelete,
+    selected,
+    onToggleSelect,
     onUpdateTitle,
     dragHandleProps,
 }: any) {
@@ -26,55 +28,64 @@ export default function ImageCard({
     };
 
     return (
-        <div className="rounded-2xl overflow-hidden bg-white shadow-lg  cursor-move"
+        <div
+            className={`cursor-move rounded-2xl overflow-hidden bg-white shadow-lg  transition
+        ${selected ? 'ring-2 ring-purple-500' : ''}`}
             ref={dragHandleProps?.ref}
             {...dragHandleProps}
+        // onPointerDown={(e) => e.stopPropagation()}
+        // onMouseDown={(e) => e.stopPropagation()}
+        // onTouchStart={(e) => e.stopPropagation()}
+        // onClick={(e) => {
+        //     e.stopPropagation();
+        //     onToggleSelect(image.id);
+        // }}
         >
             {/* IMAGE */}
             <div className="relative">
-                <img
+                <Image
                     src={image.src}
                     alt={image.imageTitle}
                     className="h-40 w-full object-cover"
+                    width={1500}
+                    height={1500}
                 />
 
-                <span className="text-xs text-green-700 bg-green-100  p-1 px-2 font-bold rounded-full absolute bottom-4 left-2 ">
+                {/* Rank */}
+                <span className="absolute bottom-2 left-2 text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                     {image.imageRank}
                 </span>
-                {/* Delete */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onRequestDelete(image);
-                    }}
-                    onPointerDown={(e) => e.stopPropagation()} // 🔥 CRITICAL
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className="text-xs py-1 rounded-full bg-red-100 text-red-600  hover:bg-red-200 transition cursor-pointer  absolute top-2 right-2"
+
+                {/* Drag Handle */}
+                {/* <div
+                   
+                    className="absolute top-2 right-2 bg-black/50 rounded-lg p-1 cursor-grab"
                 >
-                    <Trash2 className='h-4 text-[15px]  ' />
-                </button>
+                    <GripVertical size={16} className="text-white" />
+                </div> */}
             </div>
 
             {/* CONTENT */}
-            <div className="p-3 space-y-2">
-                {/* Title */}
-                <div className="flex items-center justify-between gap-2">
+            <div className="p-3 flex items-center gap-2">
+                {/* Title container */}
+                <div className="flex-1 min-w-0">
                     {!isEditing ? (
-                        <span className="text-sm font-medium truncate cursor-pointer"
-                            onPointerDown={(e) => e.stopPropagation()} // 🔥 CRITICAL
+                        <span
+                            className="block text-sm font-medium truncate cursor-pointer"
+                            onPointerDown={(e) => e.stopPropagation()}
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setIsEditing(true);
                             }}
+                            title={image.imageTitle} // 👌 tooltip on hover
                         >
                             {image.imageTitle || 'Enter image title'}
                         </span>
                     ) : (
                         <input
-                            onPointerDown={(e) => e.stopPropagation()} // 🔥 CRITICAL
+                            onPointerDown={(e) => e.stopPropagation()}
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
                             autoFocus
@@ -92,7 +103,26 @@ export default function ImageCard({
                         />
                     )}
                 </div>
+
+                {/* Checkbox – fixed size, never shrinks */}
+                <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSelect(image.id);
+                    }}
+                    className="shrink-0 bg-white/90 rounded-lg p-1 shadow cursor-pointer"
+                >
+                    {selected ? (
+                        <CheckSquare className="text-purple-600" size={16} />
+                    ) : (
+                        <Square className="text-gray-400" size={16} />
+                    )}
+                </button>
             </div>
+
         </div>
     );
 }
